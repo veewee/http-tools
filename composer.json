@@ -46,9 +46,15 @@
         "php-http/vcr-plugin": "For testing HTTP clients through storing and replaying requests and responses."
     },
     "config": {
-        "sort-packages": true
+        "sort-packages": true,
+        "allow-plugins": {
+            "phpro/grumphp-shim": true
+        }
     },
     "autoload": {
+        "files": [
+            "src/functions.php"
+        ],
         "psr-4": {
             "Phpro\\HttpTools\\": "src"
         }
