@@ -17,7 +17,7 @@ use Psr\Http\Message\ResponseInterface;
 final class PsrPreset
 {
     /**
-     * @return TransportInterface<string, ResponseInterface>
+     * @return TransportInterface<string|null, ResponseInterface>
      */
     public static function sync(
         ClientInterface $client,
@@ -32,7 +32,7 @@ final class PsrPreset
     }
 
     /**
-     * @return TransportInterface<string, Promise<ResponseInterface>>
+     * @return TransportInterface<string|null, Promise<ResponseInterface>>
      */
     public static function async(
         HttpAsyncClient $client,

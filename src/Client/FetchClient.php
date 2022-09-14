@@ -4,16 +4,13 @@ declare(strict_types=1);
 
 namespace Phpro\HttpTools\Client;
 
-use Http\Client\Common\Plugin;
 use Http\Client\Common\Plugin\ErrorPlugin;
 use Http\Client\Common\Plugin\HeaderSetPlugin;
 use Http\Client\Common\PluginClient;
-use Http\Discovery\Psr18ClientDiscovery;
 use Phpro\HttpTools\Request\Request;
-use Phpro\HttpTools\Transport\Presets\PsrPreset;
-use Phpro\HttpTools\Uri\RawUriBuilder;
-use function Psl\Dict\merge;
 use Psr\Http\Client\ClientInterface;
+use Psr\Http\Message\ResponseInterface;
+use Webmozart\Assert\Assert;
 
 /**
  * This class is inspired on the JS fetch() function:.
@@ -35,197 +32,193 @@ use Psr\Http\Client\ClientInterface;
  * It is linked to this package, so that you can use the transport features as well.
  * This makes it possible to e.g. directly parse JSON inside the fetch() function.
  *
- * @template RequestData
- * @template ResponseData
- * @psalm-type PartialConfig = array{
- *   method ?: 'POST'|'GET'|'DELETE'|'PATCH'|'PUT'|'OPTIONS'|'HEAD',
- *   headers ?: array<string, string>,
- *   data ?: RequestData
- *   transport ?: (client: ClientInterface) => TransportInterface<RequestData, ResponseData>
- *   client ?: ClientInterface
- *   plugins ?: list<Plugin>
- * }
- * @psalm-type Config = array{
- *   method: 'POST'|'GET'|'DELETE'|'PATCH'|'PUT'|'OPTIONS'|'HEAD',
- *   headers: array<string, string>,
- *   data: RequestData
- *   transport: (client: ClientInterface) => TransportInterface<RequestData, ResponseData>
- *   client: ClientInterface
- *   plugins ?: list<Plugin>
- * }
+ * @template InstanceData
+ * @template InstanceTransportRequest
+ * @template InstanceTransportResponse
  */
 final class FetchClient
 {
     /**
-     * @var PartialConfig
+     * @var FetchConfig<InstanceData, InstanceTransportRequest, InstanceTransportResponse>|null
      */
-    private array $config;
+    private ?FetchConfig $config;
 
     /**
-     * @param PartialConfig $config
+     * @patam FetchConfig<InstanceData, InstanceTransportRequest, InstanceTransportResponse>|null $config
      */
-    public function __construct(array $config = [])
-    {
+    public function __construct(
+        ?FetchConfig $config = null
+    ) {
         $this->config = $config;
     }
 
     /**
-     * @param PartialConfig $config
+     * @template CallTimeData
+     * @template CallTimeTransportRequest
+     * @template CallTimeTransportResponse
      *
-     * @return ResponseData
+     * @param FetchConfig<CallTimeData, CallTimeTransportRequest, CallTimeTransportResponse>|null $config
+     *
+     * @return ($config is null
+     *     ? (InstanceTransportResponse is mixed ? ResponseInterface : InstanceTransportResponse)
+     *     : (CallTimeTransportResponse is mixed ? ResponseInterface : CallTimeTransportResponse)
+     * )
      */
-    public function __invoke(string $uri, array $config)
+    public function __invoke(string $uri, ?FetchConfig $config = null)
     {
-        $allConfig = $this->mergeAllConfigs($config);
+        $allConfig = FetchConfig::defaults()->merge($this->config)->merge($config);
+
+        Assert::notNull($allConfig->method, 'Expected an HTTP method to be configured during fetch.');
+        Assert::notNull($allConfig->transport, 'Expected an HTTP transport factory to be configured during fetch.');
+
         $client = $this->configureClient($allConfig);
-        $transport = $allConfig['transport']($client);
-        $request = new Request($allConfig['method'], $uri, [], $allConfig['data']);
+        $transport = ($allConfig->transport)($client);
+        $request = new Request($allConfig->method, $uri, [], $allConfig->data);
 
         return $transport($request);
     }
 
     /**
-     * @param PartialConfig $config
+     * @template CallTimeData
+     * @template CallTimeTransportRequest
+     * @template CallTimeTransportResponse
      *
-     * @return ResponseData
+     * @param FetchConfig<CallTimeData, CallTimeTransportRequest, CallTimeTransportResponse>|null $config
+     *
+     * @return ($config is null
+     *     ? (InstanceTransportResponse is mixed ? ResponseInterface : InstanceTransportResponse)
+     *     : (CallTimeTransportResponse is mixed ? ResponseInterface : CallTimeTransportResponse)
+     * )
      */
-    public function get(string $uri, array $config)
+    public function get(string $uri, ?FetchConfig $config = null)
     {
         return ($this)($uri, $config);
     }
 
     /**
-     * @param PartialConfig $config
+     * @template CallTimeData
+     * @template CallTimeTransportRequest
+     * @template CallTimeTransportResponse
      *
-     * @return ResponseData
+     * @param FetchConfig<CallTimeData, CallTimeTransportRequest, CallTimeTransportResponse>|null $config
+     *
+     * @return ($config is null
+     *     ? (InstanceTransportResponse is mixed ? ResponseInterface : InstanceTransportResponse)
+     *     : (CallTimeTransportResponse is mixed ? ResponseInterface : CallTimeTransportResponse)
+     * )
      */
-    public function options(string $uri, array $config)
+    public function options(string $uri, ?FetchConfig $config = null)
     {
-        return ($this)($uri, merge(
-            $config,
-            [
-                'method' => 'OPTIONS',
-            ]
-        ));
+        return ($this)($uri, FetchConfig::of(method: 'OPTIONS')->merge($config));
     }
 
     /**
-     * @param PartialConfig $config
+     * @template CallTimeData
+     * @template CallTimeTransportRequest
+     * @template CallTimeTransportResponse
      *
-     * @return ResponseData
+     * @param FetchConfig<CallTimeData, CallTimeTransportRequest, CallTimeTransportResponse>|null $config
+     *
+     * @return ($config is null
+     *     ? (InstanceTransportResponse is mixed ? ResponseInterface : InstanceTransportResponse)
+     *     : (CallTimeTransportResponse is mixed ? ResponseInterface : CallTimeTransportResponse)
+     * )
      */
-    public function head(string $uri, array $config)
+    public function head(string $uri, ?FetchConfig $config = null)
     {
-        return ($this)($uri, merge(
-            $config,
-            [
-                'method' => 'OPTIONS',
-            ]
-        ));
+        return ($this)($uri, FetchConfig::of(method: 'HEAD')->merge($config));
     }
 
     /**
-     * @param PartialConfig $config
+     * @template CallTimeData
+     * @template CallTimeTransportRequest
+     * @template CallTimeTransportResponse
      *
-     * @return ResponseData
+     * @param FetchConfig<CallTimeData, CallTimeTransportRequest, CallTimeTransportResponse>|null $config
+     *
+     * @return ($config is null
+     *     ? (InstanceTransportResponse is mixed ? ResponseInterface : InstanceTransportResponse)
+     *     : (CallTimeTransportResponse is mixed ? ResponseInterface : CallTimeTransportResponse)
+     * )
      */
-    public function delete(string $uri, array $config)
+    public function delete(string $uri, ?FetchConfig $config = null)
     {
-        return ($this)($uri, merge(
-            $config,
-            [
-                'method' => 'DELETE',
-            ]
-        ));
+        return ($this)($uri, FetchConfig::of(method: 'DELETE')->merge($config));
     }
 
     /**
-     * @param PartialConfig $config
-     * @param RequestData $data
+     * @template CallTimeData
+     * @template CallTimeTransportRequest
+     * @template CallTimeTransportResponse
      *
-     * @return ResponseData
+     * @param CallTimeData $data
+     * @param FetchConfig<CallTimeData, CallTimeTransportRequest, CallTimeTransportResponse>|null $config
+     *
+     * @return ($config is null
+     *     ? (InstanceTransportResponse is mixed ? ResponseInterface : InstanceTransportResponse)
+     *     : (CallTimeTransportResponse is mixed ? ResponseInterface : CallTimeTransportResponse)
+     * )
      */
-    public function post(string $uri, mixed $data, array $config)
+    public function post(string $uri, mixed $data = null, ?FetchConfig $config = null)
     {
-        return ($this)($uri, merge(
-            $config,
-            [
-                'method' => 'POST',
-                'data' => $data,
-            ]
-        ));
+        return ($this)($uri, FetchConfig::of(
+            method: 'POST',
+            data: $data
+        )->merge($config));
     }
 
     /**
-     * @param PartialConfig $config
-     * @param RequestData $data
+     * @template CallTimeData
+     * @template CallTimeTransportRequest
+     * @template CallTimeTransportResponse
      *
-     * @return ResponseData
+     * @param CallTimeData $data
+     * @param FetchConfig<CallTimeData, CallTimeTransportRequest, CallTimeTransportResponse>|null $config
+     *
+     * @return ($config is null
+     *     ? (InstanceTransportResponse is mixed ? ResponseInterface : InstanceTransportResponse)
+     *     : (CallTimeTransportResponse is mixed ? ResponseInterface : CallTimeTransportResponse)
+     * )
      */
-    public function put(string $uri, mixed $data, array $config)
+    public function put(string $uri, mixed $data = null, ?FetchConfig $config = null)
     {
-        return ($this)($uri, merge(
-            $config,
-            [
-                'method' => 'PUT',
-                'data' => $data,
-            ]
-        ));
+        return ($this)($uri, FetchConfig::of(
+            method: 'PUT',
+            data: $data
+        )->merge($config));
     }
 
     /**
-     * @param PartialConfig $config
-     * @param RequestData $data
+     * @template CallTimeData
+     * @template CallTimeTransportRequest
+     * @template CallTimeTransportResponse
      *
-     * @return ResponseData
+     * @param CallTimeData $data
+     * @param FetchConfig<CallTimeData, CallTimeTransportRequest, CallTimeTransportResponse>|null $config
+     *
+     * @return ($config is null
+     *     ? (InstanceTransportResponse is mixed ? ResponseInterface : InstanceTransportResponse)
+     *     : (CallTimeTransportResponse is mixed ? ResponseInterface : CallTimeTransportResponse)
+     * )
      */
-    public function patch(string $uri, mixed $data, array $config)
+    public function patch(string $uri, mixed $data = null, ?FetchConfig $config = null)
     {
-        return ($this)($uri, merge(
-            $config,
-            [
-                'method' => 'PATCH',
-                'data' => $data,
-            ]
-        ));
+        return ($this)($uri, FetchConfig::of(
+            method: 'PATCH',
+            data: $data
+        )->merge($config));
     }
 
-    /**
-     * @param PartialConfig $config
-     *
-     * @return Config
-     */
-    private function mergeAllConfigs(array $config): array
+    private function configureClient(FetchConfig $config): ClientInterface
     {
-        // TODO : merge deep for headers and plugins?
-        return merge(
-            [
-                'method' => 'GET',
-                'headers' => [],
-                'data' => null,
-                'plugins' => [],
-                'client' => Psr18ClientDiscovery::find(),
-                'transport' => fn(ClientInterface $client) => PsrPreset::sync(
-                    $client,
-                    RawUriBuilder::createWithAutodiscoveredPsrFactories()
-                ),
-            ],
-            $this->config,
-            $config
-        );
-    }
+        Assert::notNull($config->client, 'Expected an HTTP client to be configured during fetch.');
 
-    /**
-     * @param Config $config
-     */
-    private function configureClient(array $config): ClientInterface
-    {
         return new PluginClient(
-            $config['client'],
+            $config->client,
             [
                 new ErrorPlugin(),
-                ...($config['headers'] ? [new HeaderSetPlugin($config['headers'])] : []),
-                ...($config['plugins'])
+                ...($config->headers ? [new HeaderSetPlugin($config->headers)] : []),
+                ...$config->plugins,
             ]
         );
     }

@@ -16,7 +16,7 @@ use Psr\Http\Client\ClientInterface;
 final class RawPreset
 {
     /**
-     * @return TransportInterface<string, string>
+     * @return TransportInterface<string|null, string>
      */
     public static function sync(
         ClientInterface $client,
@@ -31,7 +31,7 @@ final class RawPreset
     }
 
     /**
-     * @return TransportInterface<string, Promise<string>>
+     * @return TransportInterface<string|null, Promise<string>>
      */
     public static function async(
         HttpAsyncClient $client,

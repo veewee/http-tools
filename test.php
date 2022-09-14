@@ -3,10 +3,12 @@
 use GuzzleHttp\Client;
 use Http\Client\Common\Plugin\LoggerPlugin;
 use Http\Message\Formatter\FullHttpMessageFormatter;
+use Phpro\HttpTools\Client\FetchConfig;
 use Phpro\HttpTools\Transport\Presets\JsonPreset;
 use Phpro\HttpTools\Uri\RawUriBuilder;
 use Psr\Http\Client\ClientInterface;
 use Psr\Log\LoggerInterface;
+use function Phpro\HttpTools\config;
 use function Phpro\HttpTools\fetch;
 
 require_once 'vendor/autoload.php';
@@ -59,18 +61,18 @@ $logger = new class() implements LoggerInterface {
 };
 
 
-$response = fetch('https://swapi.dev/api/people', [
-    'headers' => [
+$response = fetch('https://swapi.dev/api/people', FetchConfig::of(
+    headers: [
         'Accept-Language' => 'nl_BE'
     ],
-    'client' => new Client([
+    client: new Client([
         'verify' => false,
     ]),
-    'transport' => fn(ClientInterface $client) =>
+    transport: fn(ClientInterface $client) =>
         JsonPreset::sync($client, RawUriBuilder::createWithAutodiscoveredPsrFactories()),
-    'plugins' => [
+    plugins: [
         new LoggerPlugin($logger, new FullHttpMessageFormatter())
     ]
-]);
+));
 
 var_dump($response);
