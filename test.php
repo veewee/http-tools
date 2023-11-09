@@ -3,7 +3,7 @@
 use GuzzleHttp\Client;
 use Http\Client\Common\Plugin\LoggerPlugin;
 use Http\Message\Formatter\FullHttpMessageFormatter;
-use Phpro\HttpTools\Client\FetchConfig;
+use Phpro\HttpTools\Fetch\FetchConfig;
 use Phpro\HttpTools\Transport\Presets\JsonPreset;
 use Phpro\HttpTools\Uri\RawUriBuilder;
 use Psr\Http\Client\ClientInterface;

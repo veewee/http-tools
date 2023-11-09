@@ -14,7 +14,7 @@ use Psr\Http\Client\ClientInterface;
 final class RawPreset
 {
     /**
-     * @return TransportInterface<string, string>
+     * @return TransportInterface<null|string, string>
      */
     public static function create(
         ClientInterface $client,
